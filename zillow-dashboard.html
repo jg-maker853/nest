@@ -99,6 +99,7 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
 .card-save{position:absolute;top:12px;right:12px;width:32px;height:32px;border-radius:50%;background:rgba(14,15,12,0.7);border:none;color:white;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px);transition:all 0.2s;}
 .card-save:hover{transform:scale(1.15);}
 .card-save.saved{background:var(--accent-red);}
+.fav-badge{position:absolute;top:6px;right:6px;background:var(--accent-red);color:white;font-size:9px;font-weight:700;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 4px;}
 .card-city-badge{position:absolute;bottom:10px;left:10px;background:rgba(14,15,12,0.75);color:rgba(200,169,110,0.9);font-size:10px;font-weight:700;padding:3px 8px;border-radius:4px;backdrop-filter:blur(8px);letter-spacing:0.3px;}.card-days{position:absolute;bottom:10px;right:10px;background:rgba(14,15,12,0.75);color:rgba(240,237,230,0.8);font-size:10px;padding:3px 8px;border-radius:4px;backdrop-filter:blur(8px);}
 .card-body{padding:16px 18px 18px;}
 .card-price{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:var(--text);display:flex;align-items:baseline;gap:8px;margin-bottom:3px;}
@@ -216,6 +217,7 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
   <button class="nav-btn active" onclick="showView('listings',this)">🏠<span class="tip">Listings</span></button>
   <button class="nav-btn" onclick="showView('map',this)">🗺️<span class="tip">Map View</span></button>
   <button class="nav-btn" onclick="showView('calc',this)">🧮<span class="tip">Mortgage</span></button>
+  <button class="nav-btn" id="favNavBtn" onclick="showView('favs',this)">♥<span class="tip">Favorites</span><span class="fav-badge" id="favBadge" style="display:none"></span></button>
 </nav>
 
 <div class="main">
@@ -342,6 +344,19 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
           <div class="legend-item"><div class="legend-dot" style="background:var(--accent-red)"></div><span id="leg-i">Interest</span></div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- FAVORITES -->
+  <div class="view" id="view-favs">
+    <div class="grid-header">
+      <div><span class="grid-title">Favorites</span><span class="grid-count" id="favCount"> · 0 saved</span></div>
+    </div>
+    <div class="listings-grid" id="favGrid"></div>
+    <div class="empty" id="favEmpty">
+      <div class="empty-icon">♡</div>
+      <div class="empty-t">No favorites yet</div>
+      <div class="empty-s">Heart any listing to save it here</div>
     </div>
   </div>
 </div>
@@ -555,9 +570,39 @@ function calcFromListing(){
 
 function toggleSave(e,id){
   e.stopPropagation();
-  if(savedIds.has(id)){savedIds.delete(id);toast('Removed from saved');}
-  else{savedIds.add(id);toast('❤️ Saved to your homes');}
+  if(savedIds.has(id)){savedIds.delete(id);toast('Removed from favorites');}
+  else{savedIds.add(id);toast('❤️ Added to favorites');}
   renderListings();
+  renderFavs();
+  const badge=document.getElementById('favBadge');
+  if(savedIds.size>0){badge.textContent=savedIds.size;badge.style.display='flex';}
+  else{badge.style.display='none';}
+}
+
+function renderFavs(){
+  const favs=allListings.filter(l=>savedIds.has(l.id));
+  document.getElementById('favCount').textContent=' · '+favs.length+' saved';
+  document.getElementById('favEmpty').style.display=favs.length?'none':'flex';
+  document.getElementById('favGrid').innerHTML=favs.map(l=>{
+    const specHTML=l.type==='land'
+      ?'<div class="spec">🌿 <b>'+l.lot+'</b></div>'
+      :'<div class="spec">🛏 <b>'+l.beds+'</b> <span>bd</span></div><div class="spec">🚿 <b>'+l.baths+'</b> <span>ba</span></div><div class="spec">📐 <b>'+l.sqft.toLocaleString()+'</b> <span>sqft</span></div>';
+    return '<div class="card" onclick="openListing(\''+l.id+'\')">'+
+      '<div class="card-img">'+
+        '<img src="'+l.img+'" alt="'+l.addr+'" loading="lazy"/>'+
+        '<button class="card-save saved" onclick="toggleSave(event,\''+l.id+'\')"><span>♥</span></button>'+
+        '<span class="card-city-badge">'+l.rawCity+'</span>'+
+        '<span class="card-days">'+daysLbl(l.daysAgo)+'</span>'+
+      '</div>'+
+      '<div class="card-body">'+
+        '<div class="card-price">'+fmt(l.price)+(l.psf?'<span class="card-psf">$'+l.psf+'/sqft</span>':'')+' </div>'+
+        '<div class="card-addr">'+l.addr+'</div>'+
+        '<div class="card-city">'+l.city+'</div>'+
+        '<div class="card-specs">'+specHTML+'</div>'+
+        '<div class="card-footer"><div class="agent"><div class="av">'+l.initials+'</div><span class="agent-name">'+l.agent+'</span></div></div>'+
+      '</div>'+
+    '</div>';
+  }).join('');
 }
 
 // ── MAP ──
